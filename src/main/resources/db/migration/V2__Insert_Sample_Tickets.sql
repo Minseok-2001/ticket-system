@@ -1,0 +1,20 @@
+-- 이벤트 1에 대한 샘플 티켓 10개 생성
+INSERT INTO tickets (event_id, price, status) VALUES
+(1, 50000.00, 'AVAILABLE'),
+(1, 50000.00, 'AVAILABLE'),
+(1, 50000.00, 'AVAILABLE'),
+(1, 50000.00, 'AVAILABLE'),
+(1, 50000.00, 'AVAILABLE'),
+(1, 70000.00, 'AVAILABLE'),
+(1, 70000.00, 'AVAILABLE'),
+(1, 70000.00, 'AVAILABLE'),
+(1, 100000.00, 'AVAILABLE'),
+(1, 100000.00, 'AVAILABLE');
+
+-- 이벤트 2에 대한 샘플 티켓 5개 생성
+INSERT INTO tickets (event_id, price, status) VALUES
+(2, 30000.00, 'AVAILABLE'),
+(2, 30000.00, 'AVAILABLE'),
+(2, 30000.00, 'AVAILABLE'),
+(2, 30000.00, 'AVAILABLE'),
+(2, 30000.00, 'AVAILABLE'); 
