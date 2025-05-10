@@ -5,7 +5,7 @@ spring:
   # 기본 데이터소스는 쓰기 전용 DB로 설정
   datasource:
     write:
-      url: jdbc:mysql://localhost:3356/ticket_system?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8
+      url: jdbc:mysql://localhost:3346/ticket_system?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8
       username: ticket_user
       password: ticket_password
       driver-class-name: com.mysql.cj.jdbc.Driver
@@ -100,12 +100,13 @@ management:
       exposure:
         include: health,info,prometheus,metrics
   metrics:
-    export:
-      prometheus:
-        enabled: true
     distribution:
       percentiles-histogram:
         http.server.requests: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
 
 # 애플리케이션 커스텀 설정
 ticket:

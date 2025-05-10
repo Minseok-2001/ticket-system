@@ -28,7 +28,7 @@ class TicketType(
     var availableQuantity: Int,
     
     @Column(length = 255)
-    var description: String? = null
+    var content: String? = null
 ) : BaseTimeEntity() {
 
     fun decreaseAvailableQuantity(count: Int = 1): Boolean {

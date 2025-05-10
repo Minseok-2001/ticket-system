@@ -15,7 +15,7 @@ class Event(
     var name: String,
     
     @Column(nullable = false, columnDefinition = "TEXT")
-    var description: String,
+    var content: String,
     
     @Column(nullable = false, length = 100)
     var venue: String,
