@@ -13,16 +13,28 @@ class Reservation(
     val id: Long = 0,
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "member_id", nullable = false, foreignKey = ForeignKey(ConstraintMode.NO_CONSTRAINT))
+    @JoinColumn(
+        name = "member_id",
+        nullable = false,
+        foreignKey = ForeignKey(ConstraintMode.NO_CONSTRAINT)
+    )
     val member: Member,
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "event_id", nullable = false, foreignKey = ForeignKey(ConstraintMode.NO_CONSTRAINT))
+    @JoinColumn(
+        name = "event_id",
+        nullable = false,
+        foreignKey = ForeignKey(ConstraintMode.NO_CONSTRAINT)
+    )
     val event: Event,
     
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ticket_id", nullable = false, foreignKey = ForeignKey(ConstraintMode.NO_CONSTRAINT))
-    val ticket: Ticket,
+    @JoinColumn(
+        name = "ticket_id",
+        nullable = false,
+        foreignKey = ForeignKey(ConstraintMode.NO_CONSTRAINT)
+    )
+    val ticket: Ticket? = null,
     
     @Column(nullable = false, precision = 10, scale = 2)
     val totalAmount: BigDecimal,
@@ -34,6 +46,9 @@ class Reservation(
     @Column(length = 255)
     var paymentId: String? = null,
     
+    @Column(length = 50)
+    val paymentMethod: String? = null,
+    
     @Column
     var confirmedAt: LocalDateTime? = null,
     
@@ -43,20 +58,42 @@ class Reservation(
     @Column(length = 500)
     var cancelReason: String? = null
 ) : BaseTimeEntity() {
-
-    fun confirm(paymentId: String) {
-        this.status = ReservationStatus.CONFIRMED
-        this.paymentId = paymentId
-        this.confirmedAt = LocalDateTime.now()
+    
+    fun confirm() {
+        if (status != ReservationStatus.PENDING) {
+            throw IllegalStateException("확정할 수 없는 상태입니다: $status")
+        }
+        status = ReservationStatus.CONFIRMED
+        confirmedAt = LocalDateTime.now()
     }
     
-    fun cancel(reason: String?) {
-        this.status = ReservationStatus.CANCELLED
-        this.cancelReason = reason
-        this.cancelledAt = LocalDateTime.now()
+    fun cancel(reason: String? = null) {
+        if (status != ReservationStatus.PENDING && status != ReservationStatus.CONFIRMED) {
+            throw IllegalStateException("취소할 수 없는 상태입니다: $status")
+        }
+        status = ReservationStatus.CANCELLED
+        cancelledAt = LocalDateTime.now()
+        cancelReason = reason
+    }
+    
+    fun complete(paymentId: String) {
+        if (status != ReservationStatus.CONFIRMED) {
+            throw IllegalStateException("완료할 수 없는 상태입니다: $status")
+        }
+        status = ReservationStatus.COMPLETED
+        this.paymentId = paymentId
+    }
+    
+    fun refund(reason: String? = null) {
+        if (status != ReservationStatus.COMPLETED) {
+            throw IllegalStateException("환불할 수 없는 상태입니다: $status")
+        }
+        status = ReservationStatus.REFUNDED
+        cancelledAt = LocalDateTime.now()
+        cancelReason = reason
     }
 }
 
 enum class ReservationStatus {
-    PENDING, CONFIRMED, CANCELLED
+    PENDING, CONFIRMED, COMPLETED, CANCELLED, REFUNDED
 } 

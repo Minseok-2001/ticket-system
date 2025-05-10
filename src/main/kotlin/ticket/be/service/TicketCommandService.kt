@@ -1,105 +1,101 @@
 package ticket.be.service
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.slf4j.LoggerFactory
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import ticket.be.dto.*
+import ticket.be.repository.EventRepository
 import ticket.be.repository.MemberRepository
-import ticket.be.repository.TicketRepository
-import java.time.LocalDateTime
-import java.util.*
+import ticket.be.repository.TicketTypeRepository
 
 @Service
 class TicketCommandService(
-    private val ticketRepository: TicketRepository,
+    private val kafkaTemplate: KafkaTemplate<String, String>,
+    private val objectMapper: ObjectMapper,
+    private val eventRepository: EventRepository,
     private val memberRepository: MemberRepository,
-    private val kafkaTemplate: KafkaTemplate<String, Any>
+    private val ticketTypeRepository: TicketTypeRepository,
+    private val ticketStockService: TicketStockService
 ) {
-
-    // 비동기 처리 - Kafka로 명령 발행
-    fun reserveTicket(command: ReserveTicketCommand) {
-        // 명령 ID 생성 및 Kafka로 명령 발행
-        val commandId = UUID.randomUUID().toString()
-        kafkaTemplate.send("ticket-commands", commandId, command)
-    }
-
-    fun confirmTicket(command: ConfirmTicketCommand) {
-        val commandId = UUID.randomUUID().toString()
-        kafkaTemplate.send("ticket-commands", commandId, command)
-    }
-
-    fun cancelTicket(command: CancelTicketCommand) {
-        val commandId = UUID.randomUUID().toString()
-        kafkaTemplate.send("ticket-commands", commandId, command)
-    }
-
-    // 명령 처리 - Kafka 리스너에서 호출
+    private val logger = LoggerFactory.getLogger(TicketCommandService::class.java)
+    
+    /**
+     * 티켓 예매 요청을 처리하고 Kafka로 이벤트 발행
+     */
     @Transactional
-    fun processReserveTicket(command: ReserveTicketCommand) {
-        // 단순화를 위해 1개씩만 처리
-        val ticket = ticketRepository.findFirstAvailableTicketForEvent(command.eventId)
-            .orElseThrow { IllegalStateException("No available tickets for event ${command.eventId}") }
+    fun reserveTicket(command: ReserveTicketCommand) {
+        logger.info("티켓 예매 요청: eventId={}, ticketTypeId={}, memberId={}, quantity={}", 
+            command.eventId, command.ticketTypeId, command.memberId, command.quantity)
+        
+        // 유효성 검증
+        val event = eventRepository.findById(command.eventId)
+            .orElseThrow { IllegalArgumentException("이벤트를 찾을 수 없습니다: id=${command.eventId}") }
         
         val member = memberRepository.findById(command.memberId)
-            .orElseThrow { IllegalStateException("Member not found: ${command.memberId}") }
-
-        if (ticket.reserve(member)) {
-            ticketRepository.save(ticket)
-
-            // 이벤트 발행
-            val event = TicketReservedEvent(
-                ticketId = ticket.id,
-                memberId = command.memberId,
-                eventId = command.eventId,
-                reservedAt = LocalDateTime.now()
-            )
-            kafkaTemplate.send("ticket-events", ticket.id.toString(), event)
+            .orElseThrow { IllegalArgumentException("회원을 찾을 수 없습니다: id=${command.memberId}") }
+        
+        val ticketType = ticketTypeRepository.findById(command.ticketTypeId)
+            .orElseThrow { IllegalArgumentException("티켓 타입을 찾을 수 없습니다: id=${command.ticketTypeId}") }
+        
+        // 재고 확인 및 감소 (Redis)
+        try {
+            val success = ticketStockService.tryDecreaseStock(command.ticketTypeId, command.quantity)
+            if (!success) {
+                throw IllegalStateException("재고 감소에 실패했습니다.")
+            }
+        } catch (e: Exception) {
+            logger.error("재고 감소 실패: ticketTypeId={}, error={}", command.ticketTypeId, e.message)
+            throw IllegalStateException("재고 처리 중 오류가 발생했습니다: ${e.message}")
+        }
+        
+        // Kafka로 이벤트 발행
+        val ticketEvent = TicketEvent(
+            eventType = "RESERVE_TICKET",
+            eventId = command.eventId,
+            ticketTypeId = command.ticketTypeId,
+            memberId = command.memberId,
+            quantity = command.quantity,
+            paymentMethod = command.paymentMethod,
+            status = "PENDING"
+        )
+        
+        try {
+            val eventJson = objectMapper.writeValueAsString(ticketEvent)
+            kafkaTemplate.send("ticket-events", eventJson)
+            logger.info("티켓 예매 이벤트 발행 완료: eventId={}, memberId={}", command.eventId, command.memberId)
+        } catch (e: Exception) {
+            // Kafka 발행 실패 시 재고 원복
+            logger.error("티켓 예매 이벤트 발행 실패: error={}", e.message, e)
+            ticketStockService.restoreStock(command.ticketTypeId, command.quantity)
+            throw IllegalStateException("티켓 예매 이벤트 발행에 실패했습니다: ${e.message}")
         }
     }
-
+    
+    /**
+     * 티켓 예매 취소 요청을 처리하고 Kafka로 이벤트 발행
+     */
     @Transactional
-    fun processConfirmTicket(command: ConfirmTicketCommand) {
-        val ticket = ticketRepository.findByIdForUpdate(command.ticketId)
-            .orElseThrow { IllegalStateException("Ticket not found: ${command.ticketId}") }
-
-        // 예약한 사용자만 확정 가능
-        if (ticket.reservedByMember?.id != command.memberId) {
-            throw IllegalStateException("Ticket not reserved by member: ${command.memberId}")
-        }
-
-        if (ticket.confirm()) {
-            ticketRepository.save(ticket)
-
-            // 이벤트 발행
-            val event = TicketConfirmedEvent(
-                ticketId = ticket.id,
-                memberId = command.memberId,
-                confirmedAt = LocalDateTime.now()
-            )
-            kafkaTemplate.send("ticket-events", ticket.id.toString(), event)
-        }
-    }
-
-    @Transactional
-    fun processCancelTicket(command: CancelTicketCommand) {
-        val ticket = ticketRepository.findByIdForUpdate(command.ticketId)
-            .orElseThrow { IllegalStateException("Ticket not found: ${command.ticketId}") }
-
-        // 예약한 사용자만 취소 가능
-        if (ticket.reservedByMember?.id != command.memberId) {
-            throw IllegalStateException("Ticket not reserved by member: ${command.memberId}")
-        }
-
-        if (ticket.cancel()) {
-            ticketRepository.save(ticket)
-
-            // 이벤트 발행
-            val event = TicketCancelledEvent(
-                ticketId = ticket.id,
-                memberId = command.memberId,
-                cancelledAt = LocalDateTime.now()
-            )
-            kafkaTemplate.send("ticket-events", ticket.id.toString(), event)
+    fun cancelTicket(command: CancelTicketCommand) {
+        logger.info("티켓 취소 요청: reservationId={}", command.reservationId)
+        
+        // Kafka로 이벤트 발행
+        val ticketEvent = mapOf(
+            "eventType" to "CANCEL_TICKET",
+            "timestamp" to System.currentTimeMillis(),
+            "reservationId" to command.reservationId,
+            "reason" to (command.reason ?: "사용자 요청"),
+            "status" to "PENDING"
+        )
+        
+        try {
+            val eventJson = objectMapper.writeValueAsString(ticketEvent)
+            kafkaTemplate.send("ticket-commands", eventJson)
+            logger.info("티켓 취소 이벤트 발행 완료: reservationId={}", command.reservationId)
+        } catch (e: Exception) {
+            logger.error("티켓 취소 이벤트 발행 실패: error={}", e.message, e)
+            throw IllegalStateException("티켓 취소 이벤트 발행에 실패했습니다: ${e.message}")
         }
     }
 } 

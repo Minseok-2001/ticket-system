@@ -31,7 +31,8 @@ data class SignupRequest(
 
 data class TokenResponse(
     val accessToken: String,
-    val tokenType: String = "Bearer"
+    val tokenType: String = "Bearer",
+    val sessionId: String? = null
 )
 
 data class MemberResponse(

@@ -12,6 +12,8 @@ import ticket.be.dto.MemberResponse
 import ticket.be.dto.SignupRequest
 import ticket.be.dto.TokenResponse
 import ticket.be.service.AuthService
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpSession
 
 @RestController
 @RequestMapping("/api/auth")
@@ -29,16 +31,62 @@ class AuthController(
     }
 
     @PostMapping("/login")
-    @Operation(summary = "로그인", description = "이메일과 비밀번호로 로그인하여 JWT 토큰을 발급받습니다.")
-    fun login(@Valid @RequestBody request: LoginRequest): ResponseEntity<TokenResponse> {
+    @Operation(summary = "로그인", description = "이메일과 비밀번호로 로그인하여 JWT 토큰 및 세션을 생성합니다.")
+    fun login(
+        @Valid @RequestBody request: LoginRequest,
+        httpSession: HttpSession
+    ): ResponseEntity<TokenResponse> {
         logger.info("로그인 요청: email={}", request.email)
-        return ResponseEntity.ok(authService.login(request))
+        return ResponseEntity.ok(authService.login(request, httpSession))
+    }
+
+    @PostMapping("/logout")
+    @Operation(summary = "로그아웃", description = "현재 로그인한 사용자의 세션을 만료시킵니다.")
+    fun logout(
+        httpSession: HttpSession,
+        @RequestHeader(value = "X-Session-Id", required = false) sessionId: String?
+    ): ResponseEntity<Map<String, String>> {
+        val targetSessionId = sessionId ?: httpSession.id
+        logger.info("로그아웃 요청: sessionId={}", targetSessionId)
+        
+        authService.logout(targetSessionId)
+        httpSession.invalidate()
+        
+        return ResponseEntity.ok(mapOf("message" to "로그아웃 되었습니다."))
     }
 
     @GetMapping("/me")
     @Operation(summary = "내 정보 조회", description = "현재 로그인한 사용자의 정보를 조회합니다.")
-    fun getMyInfo(@CurrentMember email: String): ResponseEntity<MemberResponse> {
-        logger.info("내 정보 조회: email={}", email)
+    fun getMyInfo(
+        @CurrentMember email: String,
+        httpSession: HttpSession
+    ): ResponseEntity<MemberResponse> {
+        logger.info("내 정보 조회: email={}, sessionId={}", email, httpSession.id)
+        
+        // 세션 갱신
+        authService.extendSession(httpSession.id)
+        
         return ResponseEntity.ok(authService.getMemberByEmail(email))
+    }
+    
+    @GetMapping("/validate-session")
+    @Operation(summary = "세션 검증", description = "세션의 유효성을 검증합니다.")
+    fun validateSession(
+        @RequestHeader(value = "X-Session-Id", required = false) sessionId: String?,
+        httpSession: HttpSession
+    ): ResponseEntity<Map<String, Any>> {
+        val targetSessionId = sessionId ?: httpSession.id
+        logger.info("세션 검증 요청: sessionId={}", targetSessionId)
+        
+        val isValid = authService.validateSession(targetSessionId)
+        
+        if (isValid) {
+            authService.extendSession(targetSessionId)
+        }
+        
+        return ResponseEntity.ok(mapOf(
+            "valid" to isValid,
+            "sessionId" to targetSessionId
+        ))
     }
 } 

@@ -1,5 +1,7 @@
 package ticket.be.repository
 
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Query
@@ -31,4 +33,16 @@ interface TicketRepository : JpaRepository<Ticket, Long> {
     
     @Query("SELECT COUNT(t) FROM Ticket t WHERE t.event.id = :eventId AND t.status = :status")
     fun countByEventIdAndStatus(@Param("eventId") eventId: Long, @Param("status") status: TicketStatus): Long
+
+    @Query("SELECT t FROM Ticket t WHERE t.event.id = :eventId AND t.status = :status")
+    fun findByEventIdAndStatus(eventId: Long, status: TicketStatus, pageable: Pageable): Page<Ticket>
+    
+    @Query("SELECT t FROM Ticket t WHERE t.event.id = :eventId AND t.status = 'AVAILABLE' ORDER BY t.id ASC")
+    fun findFirstAvailableTicketForEvent(eventId: Long, pageable: Pageable = Pageable.ofSize(1)): Page<Ticket>
+    
+    @Query("SELECT t FROM Ticket t WHERE t.reservedByMember.id = :memberId")
+    fun findByMemberId(memberId: Long, pageable: Pageable): Page<Ticket>
+    
+    @Query("SELECT t FROM Ticket t JOIN t.ticketType tt WHERE tt.id = :ticketTypeId AND t.status = :status")
+    fun findByTicketTypeIdAndStatus(ticketTypeId: Long, status: TicketStatus, pageable: Pageable): Page<Ticket>
 } 

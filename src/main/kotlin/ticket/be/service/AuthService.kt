@@ -14,6 +14,9 @@ import ticket.be.dto.MemberResponse
 import ticket.be.dto.SignupRequest
 import ticket.be.dto.TokenResponse
 import ticket.be.repository.MemberRepository
+import javax.servlet.http.HttpServletRequest
+import javax.servlet.http.HttpSession
+import org.slf4j.LoggerFactory
 
 @Service
 class AuthService(
@@ -21,8 +24,10 @@ class AuthService(
     private val passwordEncoder: PasswordEncoder,
     private val authenticationManager: AuthenticationManager,
     private val jwtConfig: JwtConfig,
-    private val memberDetailsService: MemberDetailsService
+    private val memberDetailsService: MemberDetailsService,
+    private val sessionService: SessionService
 ) {
+    private val logger = LoggerFactory.getLogger(AuthService::class.java)
 
     @Transactional
     fun signup(request: SignupRequest): MemberResponse {
@@ -49,7 +54,7 @@ class AuthService(
         )
     }
     
-    fun login(request: LoginRequest): TokenResponse {
+    fun login(request: LoginRequest, httpSession: HttpSession): TokenResponse {
         // 인증 시도
         authenticationManager.authenticate(
             UsernamePasswordAuthenticationToken(
@@ -70,7 +75,24 @@ class AuthService(
         
         val token = jwtConfig.generateToken(userDetails, claims)
         
-        return TokenResponse(accessToken = token)
+        // 세션에 사용자 정보 저장
+        val sessionId = httpSession.id
+        sessionService.setAttribute(sessionId, "memberId", member.id)
+        sessionService.setAttribute(sessionId, "email", member.email)
+        sessionService.setAttribute(sessionId, "role", member.memberRole.name)
+        sessionService.setAttribute(sessionId, "authenticated", true)
+        
+        logger.info("사용자 로그인 및 세션 생성: email={}, sessionId={}", member.email, sessionId)
+        
+        return TokenResponse(
+            accessToken = token,
+            sessionId = sessionId
+        )
+    }
+    
+    fun logout(sessionId: String) {
+        sessionService.invalidateSession(sessionId)
+        logger.info("사용자 로그아웃 및 세션 무효화: sessionId={}", sessionId)
     }
     
     fun getMemberByEmail(email: String): MemberResponse {
@@ -84,5 +106,18 @@ class AuthService(
             phone = member.phone,
             role = member.memberRole.name
         )
+    }
+    
+    fun validateSession(sessionId: String): Boolean {
+        val authenticated = sessionService.getAttribute(sessionId, "authenticated")
+        return authenticated as? Boolean ?: false
+    }
+    
+    fun getMemberIdFromSession(sessionId: String): Long? {
+        return sessionService.getMemberIdFromSession(sessionId)
+    }
+    
+    fun extendSession(sessionId: String) {
+        sessionService.extendSession(sessionId)
     }
 } 

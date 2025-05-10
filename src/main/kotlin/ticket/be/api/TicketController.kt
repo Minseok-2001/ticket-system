@@ -2,6 +2,10 @@ package ticket.be.api
 
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
+import org.slf4j.LoggerFactory
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
+import org.springframework.data.web.PageableDefault
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.*
@@ -20,8 +24,9 @@ class TicketController(
     private val ticketQueryService: TicketQueryService,
     private val authService: AuthService
 ) {
+    private val logger = LoggerFactory.getLogger(TicketController::class.java)
 
-    // 명령(Command) 처리 API - 비동기 처리
+    // 예매 관련 API - 비동기 처리
     @PostMapping("/reserve")
     @Operation(summary = "티켓 예약", description = "티켓을 예약합니다.")
     @PreAuthorize("isAuthenticated()")
@@ -29,88 +34,129 @@ class TicketController(
         @RequestBody command: ReserveTicketCommand,
         @CurrentMember email: String
     ): ResponseEntity<Map<String, String>> {
+        logger.info("티켓 예약 요청: eventId={}, ticketTypeId={}, email={}", 
+            command.eventId, command.ticketTypeId, email)
+        
         val member = authService.getMemberByEmail(email)
         val reserveCommand = command.copy(memberId = member.id)
+        
         ticketCommandService.reserveTicket(reserveCommand)
-        return ResponseEntity.accepted().body(mapOf("message" to "예약 요청이 접수되었습니다."))
+        
+        return ResponseEntity.accepted().body(mapOf(
+            "message" to "예약 요청이 접수되었습니다.",
+            "status" to "ACCEPTED"
+        ))
     }
 
-    @PostMapping("/{ticketId}/confirm")
-    @Operation(summary = "티켓 확정", description = "예약된 티켓을 확정합니다.")
-    @PreAuthorize("isAuthenticated()")
-    fun confirmTicket(
-        @PathVariable ticketId: Long,
-        @CurrentMember email: String
-    ): ResponseEntity<Map<String, String>> {
-        val member = authService.getMemberByEmail(email)
-        ticketCommandService.confirmTicket(ConfirmTicketCommand(member.id, ticketId))
-        return ResponseEntity.accepted().body(mapOf("message" to "예약 확정 요청이 접수되었습니다."))
-    }
-
-    @PostMapping("/{ticketId}/cancel")
+    @PostMapping("/cancel")
     @Operation(summary = "티켓 취소", description = "예약된 티켓을 취소합니다.")
     @PreAuthorize("isAuthenticated()")
     fun cancelTicket(
-        @PathVariable ticketId: Long,
-        @RequestParam(required = false) reason: String?,
+        @RequestBody command: CancelTicketCommand,
         @CurrentMember email: String
     ): ResponseEntity<Map<String, String>> {
-        val member = authService.getMemberByEmail(email)
-        ticketCommandService.cancelTicket(CancelTicketCommand(member.id, ticketId, reason))
-        return ResponseEntity.accepted().body(mapOf("message" to "예약 취소 요청이 접수되었습니다."))
-    }
-
-    // 조회(Query) 처리 API - 동기 처리, 읽기 전용 데이터베이스 사용
-    @GetMapping("/event/{eventId}")
-    @Operation(summary = "이벤트별 티켓 조회", description = "특정 이벤트의 모든 티켓을 조회합니다.")
-    fun getTicketsByEventId(@PathVariable eventId: Long): ResponseEntity<List<TicketSummaryDto>> {
-        return ResponseEntity.ok(ticketQueryService.getTicketsByEventId(eventId))
-    }
-
-    @GetMapping("/member/me")
-    @Operation(summary = "내 티켓 조회", description = "현재 로그인한 사용자의 티켓을 조회합니다.")
-    @PreAuthorize("isAuthenticated()")
-    fun getMyTickets(@CurrentMember email: String): ResponseEntity<List<TicketSummaryDto>> {
-        val member = authService.getMemberByEmail(email)
-        return ResponseEntity.ok(ticketQueryService.getTicketsByMemberId(member.id))
-    }
-
-    @GetMapping("/member/{memberId}")
-    @Operation(summary = "회원별 티켓 조회", description = "특정 회원의 티켓을 조회합니다.")
-    @PreAuthorize("hasRole('ADMIN')")
-    fun getTicketsByMemberId(@PathVariable memberId: Long): ResponseEntity<List<TicketSummaryDto>> {
-        return ResponseEntity.ok(ticketQueryService.getTicketsByMemberId(memberId))
-    }
-
-    @GetMapping("/{ticketId}")
-    @Operation(summary = "티켓 상세 조회", description = "티켓 상세 정보를 조회합니다.")
-    fun getTicketDetails(@PathVariable ticketId: Long): ResponseEntity<TicketDto> {
-        return ResponseEntity.ok(ticketQueryService.getDetailedTicket(ticketId))
-    }
-
-    @GetMapping("/{ticketId}/status")
-    @Operation(summary = "티켓 상태 조회", description = "티켓의 예약 상태를 조회합니다.")
-    fun getTicketStatus(@PathVariable ticketId: Long): ResponseEntity<ReservationStatusDto> {
-        return ResponseEntity.ok(ticketQueryService.getTicketStatus(ticketId))
+        logger.info("티켓 취소 요청: reservationId={}, email={}", command.reservationId, email)
+        
+        ticketCommandService.cancelTicket(command)
+        
+        return ResponseEntity.accepted().body(mapOf(
+            "message" to "취소 요청이 접수되었습니다.",
+            "status" to "ACCEPTED"
+        ))
     }
     
-    @GetMapping("/event/{eventId}/count")
-    @Operation(summary = "티켓 수량 조회", description = "이벤트의 특정 상태별 티켓 수량을 조회합니다.")
-    fun getTicketsCount(
-        @PathVariable eventId: Long,
-        @RequestParam(required = false) status: String?
-    ): ResponseEntity<Map<String, Int>> {
-        val count = if (status != null) {
-            try {
-                val ticketStatus = TicketStatus.valueOf(status.uppercase())
-                ticketQueryService.getTicketsCountByStatus(eventId, ticketStatus)
-            } catch (e: IllegalArgumentException) {
-                ticketQueryService.getAvailableTicketsCount(eventId)
-            }
-        } else {
-            ticketQueryService.getAvailableTicketsCount(eventId)
+    // 조회 관련 API
+    @GetMapping("/my")
+    @Operation(summary = "내 티켓 조회", description = "로그인한 사용자의 티켓 목록을 조회합니다.")
+    @PreAuthorize("isAuthenticated()")
+    fun getMyTickets(
+        @CurrentMember email: String,
+        @PageableDefault(size = 10) pageable: Pageable
+    ): ResponseEntity<Page<TicketResponse>> {
+        logger.info("내 티켓 목록 조회 요청: email={}", email)
+        
+        val member = authService.getMemberByEmail(email)
+        val tickets = ticketQueryService.getTicketsByMember(member.id, pageable)
+        
+        return ResponseEntity.ok(tickets)
+    }
+    
+    @GetMapping("/reservations/my")
+    @Operation(summary = "내 예매 내역 조회", description = "로그인한 사용자의 예매 내역을 조회합니다.")
+    @PreAuthorize("isAuthenticated()")
+    fun getMyReservations(
+        @CurrentMember email: String,
+        @PageableDefault(size = 10) pageable: Pageable
+    ): ResponseEntity<Page<ReservationResponse>> {
+        logger.info("내 예매 내역 조회 요청: email={}", email)
+        
+        val reservations = ticketQueryService.getRecentReservationsByEmail(email, pageable)
+        
+        return ResponseEntity.ok(reservations)
+    }
+    
+    @GetMapping("/reservations/{reservationId}")
+    @Operation(summary = "예매 상세 조회", description = "예매 상세 정보를 조회합니다.")
+    @PreAuthorize("isAuthenticated()")
+    fun getReservationDetail(
+        @PathVariable reservationId: Long,
+        @CurrentMember email: String
+    ): ResponseEntity<ReservationResponse> {
+        logger.info("예매 상세 조회 요청: reservationId={}, email={}", reservationId, email)
+        
+        val reservation = ticketQueryService.getReservationById(reservationId)
+        
+        // 추가 보안 검증: 예매자가 아닌 경우 접근 차단
+        val member = authService.getMemberByEmail(email)
+        if (reservation.memberId != member.id) {
+            return ResponseEntity.status(403).build()
         }
         
-        return ResponseEntity.ok(mapOf("count" to count))
+        return ResponseEntity.ok(reservation)
+    }
+    
+    @GetMapping("/reservations/{reservationId}/status")
+    @Operation(summary = "예매 상태 조회", description = "예매 상태를 조회합니다.")
+    @PreAuthorize("isAuthenticated()")
+    fun getReservationStatus(
+        @PathVariable reservationId: Long,
+        @CurrentMember email: String
+    ): ResponseEntity<ReservationStatusResponse> {
+        logger.info("예매 상태 조회 요청: reservationId={}, email={}", reservationId, email)
+        
+        val status = ticketQueryService.getReservationStatus(reservationId)
+        
+        return ResponseEntity.ok(status)
+    }
+    
+    @GetMapping("/{ticketId}")
+    @Operation(summary = "티켓 상세 조회", description = "티켓 상세 정보를 조회합니다.")
+    @PreAuthorize("isAuthenticated()")
+    fun getTicketDetail(
+        @PathVariable ticketId: Long,
+        @CurrentMember email: String
+    ): ResponseEntity<TicketResponse> {
+        logger.info("티켓 상세 조회 요청: ticketId={}, email={}", ticketId, email)
+        
+        val ticket = ticketQueryService.getTicketById(ticketId)
+        
+        return ResponseEntity.ok(ticket)
+    }
+    
+    @GetMapping("/event/{eventId}")
+    @Operation(summary = "이벤트 티켓 조회", description = "특정 이벤트의 티켓 목록을 조회합니다.")
+    @PreAuthorize("hasRole('ADMIN')")
+    fun getEventTickets(
+        @PathVariable eventId: Long,
+        @RequestParam status: TicketStatus?,
+        @PageableDefault(size = 20) pageable: Pageable
+    ): ResponseEntity<Page<TicketResponse>> {
+        logger.info("이벤트 티켓 조회 요청: eventId={}, status={}", eventId, status)
+        
+        val tickets = ticketQueryService.getTicketsByEventAndStatus(
+            eventId, status ?: TicketStatus.AVAILABLE, pageable
+        )
+        
+        return ResponseEntity.ok(tickets)
     }
 } 
