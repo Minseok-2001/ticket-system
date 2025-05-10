@@ -4,6 +4,6 @@ import java.time.LocalDateTime
 
 data class TicketCancelledEvent(
     val ticketId: Long,
-    val userId: Long,
+    val memberId: Long,
     val cancelledAt: LocalDateTime
 ) 

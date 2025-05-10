@@ -19,16 +19,16 @@ interface TicketRepository : JpaRepository<Ticket, Long> {
     fun findByIdForUpdate(@Param("id") id: Long): Optional<Ticket>
     
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT t FROM Ticket t WHERE t.eventId = :eventId AND t.status = 'AVAILABLE' ORDER BY t.id ASC LIMIT 1")
+    @Query("SELECT t FROM Ticket t WHERE t.event.id = :eventId AND t.status = 'AVAILABLE' ORDER BY t.id ASC LIMIT 1")
     fun findFirstAvailableTicketForEvent(@Param("eventId") eventId: Long): Optional<Ticket>
     
     // 조회(Query) 용 읽기 쿼리 - @Transactional(readOnly = true)와 함께 사용
-    @Query("SELECT t FROM Ticket t WHERE t.eventId = :eventId")
+    @Query("SELECT t FROM Ticket t WHERE t.event.id = :eventId")
     fun findAllByEventId(@Param("eventId") eventId: Long): List<Ticket>
     
-    @Query("SELECT t FROM Ticket t WHERE t.reservedByUserId = :userId")
-    fun findAllByReservedByUserId(@Param("userId") userId: Long): List<Ticket>
+    @Query("SELECT t FROM Ticket t WHERE t.reservedByMember.id = :memberId")
+    fun findAllByReservedByMemberId(@Param("memberId") memberId: Long): List<Ticket>
     
-    @Query("SELECT COUNT(t) FROM Ticket t WHERE t.eventId = :eventId AND t.status = :status")
+    @Query("SELECT COUNT(t) FROM Ticket t WHERE t.event.id = :eventId AND t.status = :status")
     fun countByEventIdAndStatus(@Param("eventId") eventId: Long, @Param("status") status: TicketStatus): Long
 } 

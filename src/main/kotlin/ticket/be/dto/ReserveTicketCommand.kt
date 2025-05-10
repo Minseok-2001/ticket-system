@@ -1,7 +1,7 @@
 package ticket.be.dto
 
 data class ReserveTicketCommand(
-    val userId: Long,
+    val memberId: Long,
     val eventId: Long,
     val ticketCount: Int
 )

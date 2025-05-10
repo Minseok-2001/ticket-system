@@ -4,6 +4,6 @@ import java.time.LocalDateTime
 
 data class TicketConfirmedEvent(
     val ticketId: Long,
-    val userId: Long,
+    val memberId: Long,
     val confirmedAt: LocalDateTime
 )

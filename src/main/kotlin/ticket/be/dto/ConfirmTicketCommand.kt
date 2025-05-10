@@ -1,6 +1,6 @@
 package ticket.be.dto
 
 data class ConfirmTicketCommand(
-    val userId: Long,
+    val memberId: Long,
     val ticketId: Long
 )

@@ -7,9 +7,12 @@ import java.time.LocalDateTime
 data class TicketDto(
     val id: Long,
     val eventId: Long,
+    val ticketTypeId: Long,
+    val seatNumber: String,
     val price: BigDecimal,
     val status: TicketStatus,
-    val reservedByUserId: Long?,
+    val reservedByMemberId: Long?,
+    val reservedAt: LocalDateTime?,
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime
 )
