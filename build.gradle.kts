@@ -47,9 +47,13 @@ dependencies {
     // Springdoc OpenAPI (Swagger) 의존성 
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.8")
     
-    // AWS SNS 관련 의존성
-    implementation("io.awspring.cloud:spring-cloud-aws-starter:3.1.0")
-    implementation("io.awspring.cloud:spring-cloud-aws-starter-sns:3.1.0")
+    // AWS SDK v2 의존성
+    implementation("software.amazon.awssdk:sns:2.25.19")
+    
+    // QueryDSL 의존성
+    implementation("com.querydsl:querydsl-jpa:5.1.0:jakarta")
+    annotationProcessor("com.querydsl:querydsl-apt:5.1.0:jakarta")
+    annotationProcessor("jakarta.persistence:jakarta.persistence-api")
     
     // 유틸리티 의존성
     implementation("org.redisson:redisson:3.27.1") // 분산 락을 위한 Redisson
