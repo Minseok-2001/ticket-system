@@ -85,6 +85,16 @@ dependencies {
     testImplementation("org.testcontainers:mysql:1.19.7")
     testImplementation("org.testcontainers:kafka:1.19.7")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+    // 모니터링
+    implementation("io.micrometer:micrometer-registry-prometheus")
+    implementation("org.springframework.boot:spring-boot-starter-aop")
+    
+    // 로깅
+    implementation("net.logstash.logback:logstash-logback-encoder:7.3")
+    implementation("ch.qos.logback:logback-classic")
+    implementation("ch.qos.logback:logback-core")
+    implementation("org.slf4j:slf4j-api")
 }
 
 dependencyManagement {

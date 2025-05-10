@@ -96,9 +96,9 @@ server:
 logging:
   level:
     root: INFO
-    org.springframework.web: INFO
-    org.hibernate: INFO
     ticket.be: DEBUG
+    org.springframework: INFO
+    org.hibernate: INFO
 
 # 액추에이터 설정
 management:
@@ -106,14 +106,17 @@ management:
     web:
       exposure:
         include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+    prometheus:
+      enabled: true
   metrics:
-    distribution:
-      percentiles-histogram:
-        http.server.requests: true
-  prometheus:
-    metrics:
-      export:
+    export:
+      prometheus:
         enabled: true
+    tags:
+      application: ticket-system
 
 # 애플리케이션 커스텀 설정
 ticket:
@@ -127,7 +130,6 @@ ticket:
   notification:
     sns:
       topic-arn: arn:aws:sns:ap-northeast-2:000000000000:ticket-notifications
-
 
 springdoc:
   swagger-ui:
