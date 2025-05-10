@@ -53,14 +53,16 @@ _대규모 트래픽을 처리하는 티켓 예매 시스템_
 
 ## 시스템 아키텍처
 
-```
-[사용자] --> [Spring Cloud Gateway] --> [Spring Boot App]
-                                      |
-                                      v
-[Kafka] <--> [Redis (대기열/캐싱/세션)] <--> [MySQL]
-              |                             |
-              v                             v
-[AWS SNS (푸시 알림)]                [Prometheus] --> [Grafana]
+```mermaid
+graph TD
+User[사용자] --> Gateway[Spring Cloud Gateway]
+Gateway --> App[Spring Boot App]
+App <--> Redis[Redis<br>대기열/캐싱/세션]
+Redis <--> Kafka[Kafka]
+Redis <--> MySQL[MySQL]
+Redis --> SNS[AWS SNS<br>푸시 알림]
+MySQL --> Prometheus[Prometheus]
+Prometheus --> Grafana[Grafana]
 ```
 
 ---
