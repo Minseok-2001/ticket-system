@@ -1,5 +1,6 @@
 package ticket.be.service
 
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -9,6 +10,7 @@ import org.mockito.Mock
 import org.mockito.Mockito.*
 import org.mockito.junit.jupiter.MockitoExtension
 import ticket.be.domain.Event
+import ticket.be.domain.EventStatus
 import ticket.be.domain.Member
 import ticket.be.domain.Ticket
 import ticket.be.domain.TicketStatus
@@ -18,7 +20,6 @@ import ticket.be.repository.TicketRepository
 import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.*
-import org.assertj.core.api.Assertions.assertThat
 
 @ExtendWith(MockitoExtension::class)
 class TicketQueryServiceTest {
@@ -57,7 +58,7 @@ class TicketQueryServiceTest {
             salesStartDate = LocalDateTime.now().minusDays(1),
             salesEndDate = LocalDateTime.now().plusDays(15),
             totalSeats = 100,
-            status = ticket.be.domain.EventStatus.UPCOMING
+            status = EventStatus.UPCOMING
         )
 
         ticketType = TicketType(
@@ -109,7 +110,7 @@ class TicketQueryServiceTest {
         assertThat(result[0].id).isEqualTo(1L)
         assertThat(result[0].eventId).isEqualTo(1L)
         assertThat(result[0].status).isEqualTo(TicketStatus.AVAILABLE.name)
-        
+
         assertThat(result[1].id).isEqualTo(2L)
         assertThat(result[1].eventId).isEqualTo(1L)
         assertThat(result[1].status).isEqualTo(TicketStatus.RESERVED.name)
@@ -152,7 +153,12 @@ class TicketQueryServiceTest {
     @DisplayName("이벤트의 사용 가능한 티켓 수 조회")
     fun should_return_available_tickets_count() {
         // Given
-        `when`(ticketRepository.countByEventIdAndStatus(event.id, TicketStatus.AVAILABLE)).thenReturn(8L)
+        `when`(
+            ticketRepository.countByEventIdAndStatus(
+                event.id,
+                TicketStatus.AVAILABLE
+            )
+        ).thenReturn(8L)
 
         // When
         val result = ticketQueryService.getAvailableTicketsCount(event.id)

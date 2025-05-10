@@ -1,9 +1,9 @@
 package ticket.be.domain
 
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
-import org.assertj.core.api.Assertions.assertThat
 import java.math.BigDecimal
 import java.time.LocalDateTime
 
@@ -24,7 +24,7 @@ class TicketTest {
         )
 
         event = Event(
-            id = this.event_id,
+            id = this.event.id,
             name = "Test Event",
             content = "Test Event Description",
             venue = "Test Venue",

@@ -6,7 +6,7 @@ import org.mockito.Mockito.`when`
 import org.mockito.Mockito.verify
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
-import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.security.test.context.support.WithMockUser
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
@@ -17,7 +17,12 @@ import ticket.be.dto.*
 import ticket.be.service.NotificationCommandService
 import ticket.be.service.NotificationQueryService
 import java.time.LocalDateTime
+import org.mockito.Mock
+import org.springframework.boot.test.mock.mockito.MockBean
+import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.junit.jupiter.MockitoExtension
 
+@ExtendWith(MockitoExtension::class)
 @WebMvcTest(NotificationController::class)
 class NotificationControllerTest {
 

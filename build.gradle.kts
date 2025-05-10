@@ -4,6 +4,7 @@ plugins {
     id("org.springframework.boot") version "3.4.5"
     id("io.spring.dependency-management") version "1.1.7"
     kotlin("plugin.jpa") version "1.9.25"
+    kotlin("kapt") version "1.9.25"
 }
 
 group = "ticket"
@@ -32,35 +33,48 @@ dependencies {
     implementation("org.springframework.cloud:spring-cloud-starter-zookeeper-config")
     implementation("org.springframework.kafka:spring-kafka")
     implementation("org.springframework.session:spring-session-core")
-    
+
+    // 코틀린 관련
+    implementation("org.jetbrains.kotlin:kotlin-reflect")
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+
+    // QueryDSL
+    implementation("com.querydsl:querydsl-jpa:5.1.0:jakarta")
+    implementation("com.querydsl:querydsl-apt:5.1.0:jakarta")
+    kapt("com.querydsl:querydsl-apt:5.1.0:jakarta")
+    kapt("jakarta.persistence:jakarta.persistence-api")
+    implementation("jakarta.annotation:jakarta.annotation-api:2.1.1")
+    implementation("jakarta.persistence:jakarta.persistence-api:3.1.0")
+
     // Redis 관련 의존성
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation("org.springframework.session:spring-session-data-redis")
-    
+
     // 보안 및 JWT 관련 의존성
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("io.jsonwebtoken:jjwt-api:0.11.5")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.11.5")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.11.5")
-    
+
     // Springdoc OpenAPI (Swagger) 의존성 
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.8")
-    
+
     // AWS SDK v2 의존성
     implementation("software.amazon.awssdk:sns:2.25.19")
-    
+
     // QueryDSL 의존성
     implementation("com.querydsl:querydsl-jpa:5.1.0:jakarta")
     annotationProcessor("com.querydsl:querydsl-apt:5.1.0:jakarta")
     annotationProcessor("jakarta.persistence:jakarta.persistence-api")
-    
+
     // 유틸리티 의존성
     implementation("org.redisson:redisson:3.27.1") // 분산 락을 위한 Redisson
-    
+
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     runtimeOnly("com.mysql:mysql-connector-j")
-    
+
     // 테스트 의존성
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")

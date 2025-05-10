@@ -26,7 +26,6 @@ class NotificationQueryServiceTest {
 
     @Test
     fun `getNotifications should return NotificationListResponse with correct values`() {
-        // given
         val email = "user@example.com"
         val page = 0
         val size = 10
@@ -62,10 +61,8 @@ class NotificationQueryServiceTest {
         `when`(notificationQueryRepository.findNotificationsByEmail(email, pageable))
             .thenReturn(pageResult)
         
-        // when
         val result = notificationQueryService.getNotifications(email, page, size)
         
-        // then
         assertEquals(2, result.notifications.size)
         assertEquals(2, result.totalElements)
         assertEquals(1, result.totalPages)
@@ -79,7 +76,6 @@ class NotificationQueryServiceTest {
     
     @Test
     fun `getNotificationDetail should return notification detail when found`() {
-        // given
         val email = "user@example.com"
         val id = 1L
         
@@ -99,10 +95,8 @@ class NotificationQueryServiceTest {
         `when`(notificationQueryRepository.findNotificationDetailByEmailAndId(email, id))
             .thenReturn(notificationDetail)
         
-        // when
         val result = notificationQueryService.getNotificationDetail(email, id)
         
-        // then
         assertEquals(id, result.id)
         assertEquals("TICKET_RESERVED", result.type)
         assertEquals("티켓 예약 완료", result.title)
@@ -110,14 +104,12 @@ class NotificationQueryServiceTest {
     
     @Test
     fun `getNotificationDetail should throw exception when notification not found`() {
-        // given
         val email = "user@example.com"
         val id = 999L
         
         `when`(notificationQueryRepository.findNotificationDetailByEmailAndId(email, id))
             .thenReturn(null)
         
-        // when & then
         assertFailsWith<IllegalArgumentException> {
             notificationQueryService.getNotificationDetail(email, id)
         }

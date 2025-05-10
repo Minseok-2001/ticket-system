@@ -17,6 +17,7 @@ import ticket.be.repository.MemberRepository
 import ticket.be.repository.NotificationRepository
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import java.util.Optional
 
 @ExtendWith(MockitoExtension::class)
 class NotificationCommandServiceTest {
@@ -41,7 +42,6 @@ class NotificationCommandServiceTest {
 
     @Test
     fun `registerDeviceToken should update member device token`() {
-        // given
         val email = "user@example.com"
         val deviceToken = "device-token-123"
         
@@ -55,12 +55,10 @@ class NotificationCommandServiceTest {
         
         `when`(memberRepository.findByEmail(email)).thenReturn(member)
         
-        // when
         notificationCommandService.registerDeviceToken(email, deviceToken)
         
-        // then
         verify(memberRepository).findByEmail(email)
-        verify(memberRepository).save(capture(memberCaptor))
+        verify(memberRepository).save(memberCaptor.capture())
         
         val savedMember = memberCaptor.value
         assertEquals(deviceToken, savedMember.deviceToken)
@@ -68,13 +66,11 @@ class NotificationCommandServiceTest {
     
     @Test
     fun `registerDeviceToken should throw exception when member not found`() {
-        // given
         val email = "nonexistent@example.com"
         val deviceToken = "device-token-123"
         
         `when`(memberRepository.findByEmail(email)).thenReturn(null)
         
-        // when & then
         assertFailsWith<IllegalArgumentException> {
             notificationCommandService.registerDeviceToken(email, deviceToken)
         }
@@ -82,7 +78,6 @@ class NotificationCommandServiceTest {
     
     @Test
     fun `markAsRead should mark notification as read`() {
-        // given
         val email = "user@example.com"
         val notificationId = 1L
         
@@ -105,12 +100,10 @@ class NotificationCommandServiceTest {
         
         `when`(notificationRepository.findByMemberEmailAndId(email, notificationId)).thenReturn(notification)
         
-        // when
         notificationCommandService.markAsRead(email, notificationId)
         
-        // then
         verify(notificationRepository).findByMemberEmailAndId(email, notificationId)
-        verify(notificationRepository).save(capture(notificationCaptor))
+        verify(notificationRepository).save(notificationCaptor.capture())
         
         val savedNotification = notificationCaptor.value
         assertEquals(NotificationStatus.READ, savedNotification.status)
@@ -118,13 +111,11 @@ class NotificationCommandServiceTest {
     
     @Test
     fun `markAsRead should throw exception when notification not found`() {
-        // given
         val email = "user@example.com"
         val notificationId = 999L
         
         `when`(notificationRepository.findByMemberEmailAndId(email, notificationId)).thenReturn(null)
         
-        // when & then
         assertFailsWith<IllegalArgumentException> {
             notificationCommandService.markAsRead(email, notificationId)
         }
@@ -132,12 +123,10 @@ class NotificationCommandServiceTest {
     
     @Test
     fun `sendNotification should throw exception when member not found`() {
-        // given
         val memberId = 999L
         
-        `when`(memberRepository.findById(memberId)).thenReturn(java.util.Optional.empty())
+        `when`(memberRepository.findById(memberId)).thenReturn(Optional.empty())
         
-        // when & then
         assertFailsWith<IllegalArgumentException> {
             notificationCommandService.sendNotification(
                 memberId = memberId,
