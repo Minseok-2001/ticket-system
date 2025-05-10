@@ -1,5 +1,6 @@
 package ticket.be.service
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.stereotype.Service
@@ -13,7 +14,8 @@ import java.time.LocalDateTime
 class NotificationCommandService(
     private val memberRepository: MemberRepository,
     private val notificationRepository: NotificationRepository,
-    private val kafkaTemplate: KafkaTemplate<String, String>
+    private val kafkaTemplate: KafkaTemplate<String, String>,
+    private val objectMapper: ObjectMapper
 ) {
     private val logger = LoggerFactory.getLogger(NotificationCommandService::class.java)
     
@@ -52,8 +54,9 @@ class NotificationCommandService(
         )
         
         try {
-            // JSON 직렬화 코드 추가 필요
-            // kafkaTemplate.send("notification-events", ObjectMapper().writeValueAsString(notificationEvent))
+            // NotificationEvent 객체를 JSON 문자열로 변환하여 Kafka로 전송
+            val eventJson = objectMapper.writeValueAsString(notificationEvent)
+            kafkaTemplate.send("notification-events", eventJson)
             logger.info("알림 이벤트 발행: memberId={}, type={}", memberId, type)
         } catch (e: Exception) {
             logger.error("알림 이벤트 발행 실패: memberId={}, type={}, error={}", memberId, type, e.message, e)

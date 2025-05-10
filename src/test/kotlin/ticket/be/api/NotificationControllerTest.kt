@@ -2,28 +2,36 @@ package ticket.be.api
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.Test
-import org.mockito.Mockito.`when`
+import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mockito.verify
+import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.security.test.context.support.WithMockUser
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
+import org.springframework.test.context.TestPropertySource
+import org.springframework.test.context.bean.override.mockito.MockitoBean
+import org.springframework.test.context.junit.jupiter.SpringExtension
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
-import ticket.be.dto.*
+import ticket.be.config.TestSecurityConfig
+import ticket.be.dto.DeviceTokenRequest
+import ticket.be.dto.NotificationDetailResponse
+import ticket.be.dto.NotificationListResponse
+import ticket.be.dto.NotificationSummaryDto
 import ticket.be.service.NotificationCommandService
 import ticket.be.service.NotificationQueryService
 import java.time.LocalDateTime
-import org.mockito.Mock
-import org.springframework.boot.test.mock.mockito.MockBean
-import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.junit.jupiter.MockitoExtension
 
-@ExtendWith(MockitoExtension::class)
+@ExtendWith(SpringExtension::class)
 @WebMvcTest(NotificationController::class)
+@Import(TestSecurityConfig::class)
+@AutoConfigureMockMvc(addFilters = false)
+@TestPropertySource(properties = ["spring.jpa.hibernate.ddl-auto=none", "spring.flyway.enabled=false"])
 class NotificationControllerTest {
 
     @Autowired
@@ -32,20 +40,19 @@ class NotificationControllerTest {
     @Autowired
     private lateinit var objectMapper: ObjectMapper
 
-    @MockBean
+    @MockitoBean
     private lateinit var notificationCommandService: NotificationCommandService
 
-    @MockBean
+    @MockitoBean
     private lateinit var notificationQueryService: NotificationQueryService
 
     @Test
     @WithMockUser(username = "user@example.com")
     fun `getNotifications should return notification list`() {
-        // given
         val email = "user@example.com"
         val page = 0
         val size = 10
-        
+
         val notification1 = NotificationSummaryDto(
             id = 1L,
             type = "TICKET_RESERVED",
@@ -57,7 +64,7 @@ class NotificationControllerTest {
             readAt = null,
             isRead = false
         )
-        
+
         val notification2 = NotificationSummaryDto(
             id = 2L,
             type = "PAYMENT_COMPLETED",
@@ -69,7 +76,7 @@ class NotificationControllerTest {
             readAt = LocalDateTime.now(),
             isRead = true
         )
-        
+
         val response = NotificationListResponse(
             notifications = listOf(notification1, notification2),
             totalElements = 2,
@@ -78,13 +85,14 @@ class NotificationControllerTest {
             size = 10,
             hasNext = false
         )
-        
+
         `when`(notificationQueryService.getNotifications(email, page, size)).thenReturn(response)
-        
-        // when & then
-        mockMvc.perform(get("/api/notifications")
+
+        mockMvc.perform(
+            get("/api/notifications")
                 .param("page", page.toString())
-                .param("size", size.toString()))
+                .param("size", size.toString())
+        )
             .andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.notifications.length()").value(2))
@@ -95,14 +103,13 @@ class NotificationControllerTest {
             .andExpect(jsonPath("$.totalElements").value(2))
             .andExpect(jsonPath("$.totalPages").value(1))
     }
-    
+
     @Test
     @WithMockUser(username = "user@example.com")
     fun `getNotification should return notification detail`() {
-        // given
         val email = "user@example.com"
         val id = 1L
-        
+
         val notificationDetail = NotificationDetailResponse(
             id = id,
             type = "TICKET_RESERVED",
@@ -115,10 +122,11 @@ class NotificationControllerTest {
             createdAt = LocalDateTime.now(),
             errorMessage = null
         )
-        
-        `when`(notificationQueryService.getNotificationDetail(email, id)).thenReturn(notificationDetail)
-        
-        // when & then
+
+        `when`(notificationQueryService.getNotificationDetail(email, id)).thenReturn(
+            notificationDetail
+        )
+
         mockMvc.perform(get("/api/notifications/{id}", id))
             .andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -127,36 +135,36 @@ class NotificationControllerTest {
             .andExpect(jsonPath("$.title").value("티켓 예약 완료"))
             .andExpect(jsonPath("$.content").value("VIP-A3 좌석이 예약되었습니다."))
     }
-    
+
     @Test
     @WithMockUser(username = "user@example.com")
     fun `registerDeviceToken should register device token`() {
-        // given
         val email = "user@example.com"
         val request = DeviceTokenRequest(deviceToken = "device-token-123")
-        
-        // when & then
-        mockMvc.perform(post("/api/notifications/register")
+
+        mockMvc.perform(
+            post("/api/notifications/register")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+                .content(objectMapper.writeValueAsString(request))
+        )
             .andExpect(status().isOk)
-        
+
         verify(notificationCommandService).registerDeviceToken(email, request.deviceToken)
     }
-    
+
     @Test
     @WithMockUser(username = "user@example.com")
     fun `markAsRead should mark notification as read`() {
-        // given
         val email = "user@example.com"
         val id = 1L
-        
-        // when & then
-        mockMvc.perform(patch("/api/notifications/{id}/read", id)
-                .with(csrf()))
+
+        mockMvc.perform(
+            patch("/api/notifications/{id}/read", id)
+                .with(csrf())
+        )
             .andExpect(status().isOk)
-        
+
         verify(notificationCommandService).markAsRead(email, id)
     }
 } 

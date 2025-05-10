@@ -24,7 +24,7 @@ class TicketTest {
         )
 
         event = Event(
-            id = this.event.id,
+            id = event_id,
             name = "Test Event",
             content = "Test Event Description",
             venue = "Test Venue",

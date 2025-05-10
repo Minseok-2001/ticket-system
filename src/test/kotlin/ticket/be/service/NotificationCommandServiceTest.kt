@@ -1,5 +1,6 @@
 package ticket.be.service
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.ArgumentCaptor
@@ -13,6 +14,7 @@ import ticket.be.domain.Member
 import ticket.be.domain.MemberRole
 import ticket.be.domain.Notification
 import ticket.be.domain.NotificationStatus
+import ticket.be.dto.NotificationEvent
 import ticket.be.repository.MemberRepository
 import ticket.be.repository.NotificationRepository
 import kotlin.test.assertEquals
@@ -30,6 +32,9 @@ class NotificationCommandServiceTest {
 
     @Mock
     private lateinit var kafkaTemplate: KafkaTemplate<String, String>
+    
+    @Mock
+    private lateinit var objectMapper: ObjectMapper
 
     @InjectMocks
     private lateinit var notificationCommandService: NotificationCommandService
@@ -39,101 +44,131 @@ class NotificationCommandServiceTest {
 
     @Captor
     private lateinit var notificationCaptor: ArgumentCaptor<Notification>
+    
+    @Captor
+    private lateinit var kafkaTopicCaptor: ArgumentCaptor<String>
+    
+    @Captor
+    private lateinit var kafkaMessageCaptor: ArgumentCaptor<String>
 
     @Test
-    fun `registerDeviceToken should update member device token`() {
+    fun `registerDeviceToken should update member's device token`() {
+        // given
         val email = "user@example.com"
         val deviceToken = "device-token-123"
-        
         val member = Member(
             id = 1L,
             email = email,
             password = "password",
             name = "Test User",
-            memberRole = MemberRole.USER
+            deviceToken = null
         )
         
         `when`(memberRepository.findByEmail(email)).thenReturn(member)
         
+        // when
         notificationCommandService.registerDeviceToken(email, deviceToken)
         
-        verify(memberRepository).findByEmail(email)
-        verify(memberRepository).save(memberCaptor.capture())
-        
-        val savedMember = memberCaptor.value
-        assertEquals(deviceToken, savedMember.deviceToken)
+        // then
+        verify(memberRepository).save(capture(memberCaptor))
+        assertEquals(deviceToken, memberCaptor.value.deviceToken)
     }
     
     @Test
     fun `registerDeviceToken should throw exception when member not found`() {
+        // given
         val email = "nonexistent@example.com"
         val deviceToken = "device-token-123"
         
         `when`(memberRepository.findByEmail(email)).thenReturn(null)
         
+        // when, then
         assertFailsWith<IllegalArgumentException> {
             notificationCommandService.registerDeviceToken(email, deviceToken)
         }
     }
     
     @Test
-    fun `markAsRead should mark notification as read`() {
+    fun `markAsRead should update notification status`() {
+        // given
         val email = "user@example.com"
         val notificationId = 1L
-        
-        val member = Member(
-            id = 1L,
-            email = email,
-            password = "password",
-            name = "Test User",
-            memberRole = MemberRole.USER
-        )
-        
         val notification = Notification(
             id = notificationId,
-            member = member,
-            type = "TICKET_RESERVED",
-            title = "티켓 예약 완료",
-            content = "VIP-A3 좌석이 예약되었습니다.",
+            member = Member(id = 1L, email = email, password = "password", name = "Test User"),
+            type = "TEST",
+            title = "Test Notification",
+            content = "This is a test notification",
             status = NotificationStatus.SENT
         )
         
         `when`(notificationRepository.findByMemberEmailAndId(email, notificationId)).thenReturn(notification)
         
+        // when
         notificationCommandService.markAsRead(email, notificationId)
         
-        verify(notificationRepository).findByMemberEmailAndId(email, notificationId)
-        verify(notificationRepository).save(notificationCaptor.capture())
-        
-        val savedNotification = notificationCaptor.value
-        assertEquals(NotificationStatus.READ, savedNotification.status)
+        // then
+        verify(notificationRepository).save(capture(notificationCaptor))
+        assertEquals(NotificationStatus.READ, notificationCaptor.value.status)
     }
     
     @Test
     fun `markAsRead should throw exception when notification not found`() {
+        // given
         val email = "user@example.com"
-        val notificationId = 999L
+        val notificationId = 1L
         
         `when`(notificationRepository.findByMemberEmailAndId(email, notificationId)).thenReturn(null)
         
+        // when, then
         assertFailsWith<IllegalArgumentException> {
             notificationCommandService.markAsRead(email, notificationId)
         }
     }
     
     @Test
+    fun `sendNotification should publish event to Kafka`() {
+        // given
+        val memberId = 1L
+        val type = "TEST"
+        val title = "Test Notification"
+        val content = "This is a test notification"
+        val link = "/test/123"
+        
+        val member = Member(
+            id = memberId,
+            email = "user@example.com",
+            password = "password",
+            name = "Test User"
+        )
+        
+        val eventJson = """{"memberId":1,"type":"TEST","title":"Test Notification","content":"This is a test notification","link":"/test/123"}"""
+        
+        `when`(memberRepository.findById(memberId)).thenReturn(Optional.of(member))
+        `when`(objectMapper.writeValueAsString(any(NotificationEvent::class.java))).thenReturn(eventJson)
+        
+        // when
+        notificationCommandService.sendNotification(memberId, type, title, content, link)
+        
+        // then
+        verify(kafkaTemplate).send(capture(kafkaTopicCaptor), capture(kafkaMessageCaptor))
+        assertEquals("notification-events", kafkaTopicCaptor.value)
+        assertEquals(eventJson, kafkaMessageCaptor.value)
+    }
+    
+    @Test
     fun `sendNotification should throw exception when member not found`() {
-        val memberId = 999L
+        // given
+        val memberId = 1L
+        val type = "TEST"
+        val title = "Test Notification"
+        val content = "This is a test notification"
         
         `when`(memberRepository.findById(memberId)).thenReturn(Optional.empty())
         
+        // when, then
         assertFailsWith<IllegalArgumentException> {
-            notificationCommandService.sendNotification(
-                memberId = memberId,
-                type = "TEST",
-                title = "Test Title",
-                content = "Test Content"
-            )
+            notificationCommandService.sendNotification(memberId, type, title, content)
         }
     }
 } 
