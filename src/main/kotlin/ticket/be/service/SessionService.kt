@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit
 @Service
 class SessionService(
     private val redisTemplate: RedisTemplate<String, Any>,
-    private val sessionRepository: SessionRepository<out Session>
+    private val sessionRepository: SessionRepository<Session>
 ) {
     private val logger = LoggerFactory.getLogger(SessionService::class.java)
 
@@ -74,11 +74,11 @@ class SessionService(
     fun extendSession(sessionId: String, expireSeconds: Long = 3600) {
         try {
             val session = sessionRepository.findById(sessionId)
-            if (session != null) {
-                session.maxInactiveInterval = java.time.Duration.ofSeconds(expireSeconds)
-                sessionRepository.save(session)
+            session?.let {
+                it.maxInactiveInterval = java.time.Duration.ofSeconds(expireSeconds)
+                sessionRepository.save(it)
                 logger.debug("세션 만료 시간 갱신: sessionId={}, expireSeconds={}", sessionId, expireSeconds)
-            }
+            } ?: logger.warn("세션을 찾을 수 없음: sessionId={}", sessionId)
         } catch (e: Exception) {
             logger.error("세션 만료 시간 갱신 실패: sessionId={}, error={}", sessionId, e.message, e)
         }

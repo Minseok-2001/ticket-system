@@ -11,6 +11,7 @@ import ticket.be.service.AuthService
 import ticket.be.service.PaymentResult
 import ticket.be.service.PaymentService
 import ticket.be.service.TicketQueryService
+import java.math.BigDecimal
 
 @RestController
 @RequestMapping("/api/payments")
@@ -36,7 +37,7 @@ class PaymentController(
         
         // 예약자 본인 확인
         if (reservation.memberId != member.id) {
-            return ResponseEntity.status(403).body(mapOf(
+            return ResponseEntity.status(403).body(mapOf<String, Any>(
                 "success" to false,
                 "message" to "예약자 본인만 결제할 수 있습니다."
             ))
@@ -45,14 +46,14 @@ class PaymentController(
         val result = paymentService.processPayment(request.reservationId)
         
         return if (result.success) {
-            ResponseEntity.ok(mapOf(
+            ResponseEntity.ok(mapOf<String, Any>(
                 "success" to true,
                 "message" to "결제가 성공적으로 처리되었습니다.",
-                "transactionId" to result.transactionId,
+                "transactionId" to (result.transactionId ?: ""),
                 "reservationId" to result.reservationId
             ))
         } else {
-            ResponseEntity.badRequest().body(mapOf(
+            ResponseEntity.badRequest().body(mapOf<String, Any>(
                 "success" to false,
                 "message" to (result.errorMessage ?: "결제 처리 중 오류가 발생했습니다."),
                 "reservationId" to result.reservationId
@@ -74,7 +75,7 @@ class PaymentController(
         
         // 예약자 본인 확인
         if (reservation.memberId != member.id) {
-            return ResponseEntity.status(403).body(mapOf(
+            return ResponseEntity.status(403).body(mapOf<String, Any>(
                 "success" to false,
                 "message" to "예약자 본인만 결제를 취소할 수 있습니다."
             ))
@@ -83,14 +84,14 @@ class PaymentController(
         val result = paymentService.cancelPayment(request.reservationId, request.reason)
         
         return if (result.success) {
-            ResponseEntity.ok(mapOf(
+            ResponseEntity.ok(mapOf<String, Any>(
                 "success" to true,
                 "message" to "결제가 성공적으로 취소되었습니다.",
-                "refundId" to result.refundId,
+                "refundId" to (result.refundId ?: ""),
                 "reservationId" to result.reservationId
             ))
         } else {
-            ResponseEntity.badRequest().body(mapOf(
+            ResponseEntity.badRequest().body(mapOf<String, Any>(
                 "success" to false,
                 "message" to (result.errorMessage ?: "결제 취소 중 오류가 발생했습니다."),
                 "reservationId" to result.reservationId
@@ -108,12 +109,12 @@ class PaymentController(
         
         val result = paymentService.getPaymentStatus(transactionId)
         
-        return ResponseEntity.ok(mapOf(
-            "transactionId" to result.transactionId,
-            "status" to result.status,
-            "paidAt" to result.paidAt,
-            "amount" to result.amount,
-            "errorMessage" to result.errorMessage
+        return ResponseEntity.ok(mapOf<String, Any>(
+            "transactionId" to (result.transactionId ?: ""),
+            "status" to (result.status ?: ""),
+            "paidAt" to (result.paidAt ?: ""),
+            "amount" to (result.amount ?: BigDecimal.ZERO),
+            "errorMessage" to (result.errorMessage ?: "")
         ))
     }
 }

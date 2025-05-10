@@ -14,8 +14,8 @@ import ticket.be.dto.MemberResponse
 import ticket.be.dto.SignupRequest
 import ticket.be.dto.TokenResponse
 import ticket.be.repository.MemberRepository
-import javax.servlet.http.HttpServletRequest
-import javax.servlet.http.HttpSession
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpSession
 import org.slf4j.LoggerFactory
 
 @Service

@@ -34,8 +34,8 @@ class TicketController(
         @RequestBody command: ReserveTicketCommand,
         @CurrentMember email: String
     ): ResponseEntity<Map<String, String>> {
-        logger.info("티켓 예약 요청: eventId={}, ticketTypeId={}, email={}", 
-            command.eventId, command.ticketTypeId, email)
+        logger.info("티켓 예약 요청: eventId={}, email={}", 
+            command.eventId, email)
         
         val member = authService.getMemberByEmail(email)
         val reserveCommand = command.copy(memberId = member.id)

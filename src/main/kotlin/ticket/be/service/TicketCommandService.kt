@@ -98,4 +98,31 @@ class TicketCommandService(
             throw IllegalStateException("티켓 취소 이벤트 발행에 실패했습니다: ${e.message}")
         }
     }
+    
+    /**
+     * 예약 티켓 처리 (Kafka Listener에서 호출)
+     */
+    @Transactional
+    fun processReserveTicket(command: ReserveTicketCommand) {
+        logger.info("예약 티켓 처리: eventId={}, memberId={}", command.eventId, command.memberId)
+        // 실제 티켓 예약 처리 구현
+    }
+    
+    /**
+     * 티켓 확인 처리 (Kafka Listener에서 호출)
+     */
+    @Transactional
+    fun processConfirmTicket(command: ConfirmTicketCommand) {
+        logger.info("티켓 확인 처리: reservationId={}", command.reservationId)
+        // 실제 티켓 확인 처리 구현
+    }
+    
+    /**
+     * 티켓 취소 처리 (Kafka Listener에서 호출)
+     */
+    @Transactional
+    fun processCancelTicket(command: CancelTicketCommand) {
+        logger.info("티켓 취소 처리: reservationId={}", command.reservationId)
+        // 실제 티켓 취소 처리 구현
+    }
 } 

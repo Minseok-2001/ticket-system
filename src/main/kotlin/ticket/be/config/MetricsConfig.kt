@@ -1,10 +1,13 @@
 package ticket.be.config
 
 import io.micrometer.core.instrument.Counter
+import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.function.ToDoubleFunction
 
 /**
  * 커스텀 메트릭 설정
@@ -12,6 +15,9 @@ import org.springframework.context.annotation.Configuration
  */
 @Configuration
 class MetricsConfig(private val registry: MeterRegistry) {
+
+    // 동시 접속자 수를 관리하는 AtomicInteger
+    private val concurrentUsers = AtomicInteger(0)
 
     /**
      * 대기열 진입 카운터
@@ -89,7 +95,9 @@ class MetricsConfig(private val registry: MeterRegistry) {
      * 동시 접속자 수
      */
     @Bean
-    fun concurrentUsersGauge() {
-        registry.gauge("ticket.users.concurrent", emptyList(), 0)
+    fun concurrentUsersGauge(): AtomicInteger {
+        // 레지스트리에 게이지 등록
+        registry.gauge("ticket.users.concurrent", concurrentUsers)
+        return concurrentUsers
     }
 } 
