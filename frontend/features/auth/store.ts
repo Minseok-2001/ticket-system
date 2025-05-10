@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { User, LoginRequest, SignupRequest, TokenResponse } from "./types";
+import api from "@/lib/api";
+import { AxiosError } from "axios";
 
 interface AuthState {
   user: User | null;
@@ -36,32 +38,27 @@ export const useAuthStore = create<AuthState>()(
       login: async (credentials) => {
         try {
           set({ loading: true, error: null });
-          const response = await fetch("/api/auth/login", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(credentials),
-          });
+          const response = await api.post("/auth/login", credentials);
 
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || "로그인에 실패했습니다.");
+          const data = response.data;
+
+          // 로컬 스토리지에 토큰 저장
+          localStorage.setItem("token", data.token.accessToken);
+          if (data.token.sessionId) {
+            localStorage.setItem("refreshToken", data.token.sessionId);
           }
 
-          const data = await response.json();
           set({
             user: data.user,
             token: data.token,
             loading: false,
           });
         } catch (error) {
+          const axiosError = error as AxiosError<{ message: string }>;
           set({
             loading: false,
             error:
-              error instanceof Error
-                ? error.message
-                : "알 수 없는 오류가 발생했습니다.",
+              axiosError.response?.data?.message || "로그인에 실패했습니다.",
           });
         }
       },
@@ -69,31 +66,19 @@ export const useAuthStore = create<AuthState>()(
       signup: async (data) => {
         try {
           set({ loading: true, error: null });
-          const response = await fetch("/api/auth/signup", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(data),
-          });
+          const response = await api.post("/auth/signup", data);
 
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || "회원가입에 실패했습니다.");
-          }
-
-          const responseData = await response.json();
+          const responseData = response.data;
           set({
             user: responseData.user,
             loading: false,
           });
         } catch (error) {
+          const axiosError = error as AxiosError<{ message: string }>;
           set({
             loading: false,
             error:
-              error instanceof Error
-                ? error.message
-                : "알 수 없는 오류가 발생했습니다.",
+              axiosError.response?.data?.message || "회원가입에 실패했습니다.",
           });
         }
       },
@@ -101,25 +86,19 @@ export const useAuthStore = create<AuthState>()(
       logout: async () => {
         try {
           set({ loading: true, error: null });
-          const response = await fetch("/api/auth/logout", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          });
+          await api.post("/auth/logout");
 
-          if (!response.ok) {
-            throw new Error("로그아웃에 실패했습니다.");
-          }
+          // 로컬 스토리지에서 토큰 제거
+          localStorage.removeItem("token");
+          localStorage.removeItem("refreshToken");
 
           set({ user: null, token: null, loading: false });
         } catch (error) {
+          const axiosError = error as AxiosError<{ message: string }>;
           set({
             loading: false,
             error:
-              error instanceof Error
-                ? error.message
-                : "알 수 없는 오류가 발생했습니다.",
+              axiosError.response?.data?.message || "로그아웃에 실패했습니다.",
           });
         }
       },

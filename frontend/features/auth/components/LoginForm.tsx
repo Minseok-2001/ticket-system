@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from "react";
 import { useAuthStore } from "../store";
 import Link from "next/link";

@@ -134,7 +134,7 @@ docker-compose up -d
 
 4. 서비스 접속
 
-- 애플리케이션: http://localhost:8081
+- 애플리케이션: http://localhost:8082
 - Kafka UI: http://localhost:8080
 - Prometheus: http://localhost:9090
 - Grafana: http://localhost:3000 (사용자명/비밀번호: admin/admin)
