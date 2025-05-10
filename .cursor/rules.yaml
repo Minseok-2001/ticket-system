@@ -1,0 +1,207 @@
+version: 1.0
+
+# 티켓 예매 시스템 Cursor Rules
+
+# 코드 스타일 규칙
+style_rules:
+  kotlin:
+    indent: 4 # 들여쓰기 4 공백 사용
+    max_line_length: 120 # 최대 줄 길이 120자
+    trailing_comma: true # 마지막 요소 후 쉼표 사용
+    import_ordering: true # 임포트 알파벳 순 정렬
+
+# 자동 완성 규칙
+autocomplete:
+  kotlin:
+    enabled: true
+    smart_snippets: true # 스마트 스니펫 활성화
+
+# 프로젝트 구조 규칙
+project_structure:
+  # 주요 디렉토리 구조
+  directories:
+    - src/main/kotlin/ticket/be # 메인 소스 디렉토리
+    - src/main/kotlin/ticket/be/api # API 컨트롤러
+    - src/main/kotlin/ticket/be/auth # 인증 관련
+    - src/main/kotlin/ticket/be/queue # 대기열 서비스
+    - src/main/kotlin/ticket/be/ticket # 티켓 서비스
+    - src/main/kotlin/ticket/be/notification # 알림 서비스
+    - src/main/kotlin/ticket/be/domain # 도메인 모델
+    - src/main/kotlin/ticket/be/repository # 레포지토리
+    - src/main/kotlin/ticket/be/config # 설정
+    - src/main/kotlin/ticket/be/exception # 예외 처리
+    - src/main/kotlin/ticket/be/util # 유틸리티
+    - src/main/resources # 리소스
+    - src/test/kotlin/ticket/be # 테스트
+
+# 파일 네이밍 규칙
+file_naming:
+  kotlin:
+    controller_suffix: Controller # 컨트롤러 파일 접미사
+    service_suffix: Service # 서비스 파일 접미사
+    repository_suffix: Repository # 레포지토리 파일 접미사
+    entity_suffix: "" # 엔티티 파일 접미사 없음
+    dto_suffix: Dto # DTO 파일 접미사
+    test_prefix: "" # 테스트 파일 접두사 없음
+    test_suffix: Test # 테스트 파일 접미사
+
+# 코드 생성 템플릿
+code_templates:
+  kotlin:
+    controller:
+      template: |
+        package ticket.be.api
+
+        import org.springframework.web.bind.annotation.*
+        import org.springframework.http.ResponseEntity
+        import org.springframework.validation.annotation.Validated
+        import javax.validation.Valid
+
+        @RestController
+        @RequestMapping("/api")
+        @Validated
+        class $NAME$Controller(private val $name$Service: $NAME$Service) {
+            
+            // TODO: API 엔드포인트 구현
+        }
+
+    service:
+      template: |
+        package ticket.be.service
+
+        import org.springframework.stereotype.Service
+        import org.springframework.transaction.annotation.Transactional
+
+        @Service
+        class $NAME$Service(private val $name$Repository: $NAME$Repository) {
+            
+            // TODO: 서비스 로직 구현
+        }
+
+    queue_service:
+      template: |
+        package ticket.be.queue
+
+        import org.springframework.stereotype.Service
+        import org.springframework.data.redis.core.RedisTemplate
+        import java.util.concurrent.TimeUnit
+
+        @Service
+        class $NAME$QueueService(
+            private val redisTemplate: RedisTemplate<String, String>,
+        ) {
+            // TODO: 대기열 서비스 로직 구현 
+        }
+
+    notification_service:
+      template: |
+        package ticket.be.notification
+
+        import org.springframework.stereotype.Service
+        import com.amazonaws.services.sns.AmazonSNS
+        import org.springframework.kafka.annotation.KafkaListener
+
+        @Service
+        class $NAME$NotificationService(
+            private val amazonSNS: AmazonSNS,
+        ) {
+            // TODO: 알림 서비스 로직 구현
+            
+            @KafkaListener(topics = ["notification-events"])
+            fun processNotificationEvent(event: NotificationEvent) {
+                // TODO: 알림 이벤트 처리
+            }
+        }
+
+    repository:
+      template: |
+        package ticket.be.repository
+
+        import org.springframework.data.jpa.repository.JpaRepository
+        import org.springframework.stereotype.Repository
+        import ticket.be.domain.$NAME$
+
+        @Repository
+        interface $NAME$Repository : JpaRepository<$NAME$, Long> {
+            
+            // TODO: 커스텀 쿼리 메소드 추가
+        }
+
+    entity:
+      template: |
+        package ticket.be.domain
+
+        import javax.persistence.*
+        import java.time.LocalDateTime
+
+        @Entity
+        @Table(name = "$name$s")
+        data class $NAME$(
+            @Id
+            @GeneratedValue(strategy = GenerationType.IDENTITY)
+            val id: Long = 0,
+            
+            // TODO: 필드 추가
+            
+            @Column(updatable = false)
+            val createdAt: LocalDateTime = LocalDateTime.now(),
+            
+            @Column
+            var updatedAt: LocalDateTime = LocalDateTime.now()
+        )
+
+    dto:
+      template: |
+        package ticket.be.api.dto
+
+        import javax.validation.constraints.*
+        import java.time.LocalDateTime
+
+        data class $NAME$Dto(
+            // TODO: DTO 필드 추가
+        )
+
+# CI/CD 통합 설정
+ci_cd:
+  build_command: "./gradlew build"
+  test_command: "./gradlew test"
+  load_test_command: "jmeter -n -t ./loadtest/ticket_reservation_test.jmx"
+  lint_command: "./gradlew ktlintCheck"
+
+# 로깅 및 디버깅 설정
+logging:
+  level: INFO
+  format: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# 포멧팅 규칙
+formatting:
+  kotlin:
+    ktlint_enabled: true # ktlint 활성화
+    use_spaces: true # 탭 대신 공백 사용
+    indentation_size: 4 # 들여쓰기 크기 4
+    continuation_indent: 4 # 연속 들여쓰기 크기 4
+
+# 파일 관련 규칙
+file_rules:
+  encoding: UTF-8 # 파일 인코딩 UTF-8
+  line_ending: LF # 줄 끝 문자 LF (Line Feed)
+
+# 성능 테스트 규칙
+performance_rules:
+  tps_target: 1000 # 목표 TPS
+  queue_processing_time: 1000 # 대기열 처리 시간 목표 (ms)
+  notification_time: 2000 # 알림 전송 시간 목표 (ms)
+  availability_target: 99.9 # 가용성 목표 (%)
+
+# 시스템 아키텍처 규칙
+architecture_rules:
+  patterns:
+    - Controller는 Service만 호출
+    - Service는 Repository와 다른 Service만 호출
+    - Domain은 비즈니스 로직만 포함
+    - Repository는 외부에서 직접 접근 불가
+  dependencies:
+    - 대기열 서비스는 Redis 사용
+    - 알림 서비스는 Kafka와 AWS SNS 사용
+    - 티켓 서비스는 MySQL과 Kafka 사용
+    - 인증 서비스는 JWT와 Redis 사용
